@@ -10,9 +10,13 @@
 		android:label="@string/app_name"
 		android:roundIcon="@mipmap/ic_launcher_round"
 		android:supportsRtl="true"
-		android:usesCleartextTraffic="true"
-		android:theme="@style/Theme.GameHtmlView">
-		<activity android:name=".MainActivity">
+		android:theme="@style/Theme.GameHtmlView"
+		android:usesCleartextTraffic="true">
+		<activity
+			android:name=".MainActivity"
+			android:configChanges="orientation|screenSize|keyboardHidden|keyboard"
+			android:launchMode="singleTask"
+			android:windowSoftInputMode="adjustResize">
 			<intent-filter>
 				<category android:name="android.intent.category.LAUNCHER" />
 				<action android:name="android.intent.action.MAIN" />

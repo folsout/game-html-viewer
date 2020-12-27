@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.util.Log
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.ValueCallback
@@ -27,6 +29,7 @@ class WebViewCreator(private val chooserHelper: ChooserHelper) {
 	private lateinit var progressBar: ProgressBar
 	private val OFFER_ID = "offer_id"
 	private lateinit var script: String
+	private var doubleSaveUrl = false
 
 	fun createWebView(context: Context, progressBar: ProgressBar): WebView {
 		webView = WebView(context)
@@ -59,18 +62,15 @@ class WebViewCreator(private val chooserHelper: ChooserHelper) {
 		webView.settings.cacheMode = WebSettings.LOAD_DEFAULT
 		webView.settings.setGeolocationEnabled(true)
 		webView.settings.setAppCachePath(context.cacheDir.absolutePath)
+		webView.settings.useWideViewPort = true
 		webView.settings.blockNetworkImage = false
 		webView.settings.allowFileAccess = true
+		webView.settings.pluginState = WebSettings.PluginState.ON
 		webView.settings.loadsImagesAutomatically = true
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-			webView.settings.safeBrowsingEnabled = true
-		}
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
 			webView.settings.mediaPlaybackRequiresUserGesture = false
 		}
-		webView.settings.useWideViewPort = true
 		webView.settings.javaScriptCanOpenWindowsAutomatically = true
-		webView.settings.setSupportMultipleWindows(true)
 		webView.settings.allowUniversalAccessFromFileURLs = true
 		val cookieManager = CookieManager.getInstance()
 		cookieManager.setAcceptCookie(true)
@@ -109,6 +109,7 @@ class WebViewCreator(private val chooserHelper: ChooserHelper) {
 	}
 
 	private fun createWebViewClient() {
+
 		webView.webViewClient = object : WebViewClient() {
 
 			override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
@@ -117,11 +118,16 @@ class WebViewCreator(private val chooserHelper: ChooserHelper) {
 					?.let {
 						sharedPreferencesEditor.putString(OFFER_ID, it).apply()
 					}
-				return false
+				url?.let {
+					view?.loadUrl(it)
+				}
+
+				return true
 			}
 
 			override fun onPageFinished(view: WebView?, url: String?) {
 				super.onPageFinished(view, url)
+
 
 				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
 					CookieManager.getInstance().flush()
@@ -129,6 +135,7 @@ class WebViewCreator(private val chooserHelper: ChooserHelper) {
 
 				url?.let {
 					if (it != "about:blank") addToPage(it)
+
 				}
 
 				val offId = sharedPreferences.getString(OFFER_ID, "")
@@ -139,11 +146,32 @@ class WebViewCreator(private val chooserHelper: ChooserHelper) {
 		}
 	}
 
-	fun addToPage(url: String) {
-		if (backPage.size > 5) {
-			backPage.removeLast()
+	fun restorePage(url: String) {
+		backPage.addFirst(url)
+	}
+
+	private fun addToPage(url: String) {
+		if (doubleSaveUrl) {
+			Log.d("doubleSave", "doubleSave")
+			if (backPage.size > 5) {
+				backPage.removeLast()
+			}
+			backPage.removeFirst()
+			backPage.addFirst(url)
+		} else {
+			if (backPage.size > 5) {
+				backPage.removeLast()
+			}
+			Log.d("doubleSave", "save")
+			backPage.addFirst(url)
 		}
-		backPage.add(url)
+		doubleSaveUrl = true
+		Handler().postDelayed(
+			{
+				doubleSaveUrl = false
+			},
+			2000
+		)
 	}
 
 	fun goBackPage(): Boolean {
